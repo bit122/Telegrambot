@@ -1,0 +1,6 @@
+telegram
+python-telegram-bot
+dotenv
+os
+logging
+datetime

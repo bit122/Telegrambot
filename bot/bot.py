@@ -3,15 +3,35 @@ import os
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
+from datetime import datetime
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT-TOKEN")
+
+base_log_dir = "logs"
+
+list = [
+    'hello there', 'hi', 'hey', 'yo', 'sup', 'howdy', 'greetings', 'what\'s up', 'hiya', 'good day'
+]
+
+now = datetime.now()
+year_folder = now.strftime("%Y")
+day_folder = now.strftime("%Y-%m-%d")
+log_dir = os.path.join(base_log_dir, year_folder, day_folder)
+os.makedirs(log_dir, exist_ok=True)
+log_filename = os.path.join(log_dir, "bot.log")
+
+if os.path.exists(log_filename):
+    timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
+    archived_log = os.path.join(log_dir, f"bot_{timestamp}.log")
+    os.rename(log_filename, archived_log) 
+
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
     handlers=[
-        logging.FileHandler("bot.log"),
+        logging.FileHandler(log_filename),
         logging.StreamHandler()
     ]
 )
@@ -25,8 +45,8 @@ async def say_hello(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Message from {update.effective_user.username}: {update.message.text}")
     await update.message.reply_text("Hello there")
 
-async def whoami(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"/whoami from {update.effective_user.username} ({update.effective_user.id})")
+async def whoareyou(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f"/whoareyou from {update.effective_user.username} ({update.effective_user.id})")
     await update.message.reply_text("Hi im femboy")
     
 async def exit_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,28 +76,6 @@ async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"/id from {update.effective_user.username} ({chat_id})")
     await update.message.reply_text(f"Your Chat ID is: {chat_id}")
 
-async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"/clear requested by {update.effective_user.username} in chat {update.message.chat_id}")
-    chat_id = update.message.chat_id
-
-async def clear_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"/clear requested by {update.effective_user.username} in chat {update.message.chat_id}")
-    chat_id = update.message.chat_id
-
-    deleted_count = 0
-
-    # await the coroutine to get the Chat object, then call its get_history()
-    chat = await context.bot.get_chat(chat_id)
-    messages = await chat.get_history(limit=50)
-
-    for message in messages:
-        try:
-            await context.bot.delete_message(chat_id=chat_id, message_id=message.message_id)
-            deleted_count += 1
-        except Exception as e:
-            logger.warning(f"Failed to delete message {message.message_id}: {e}")
-    await update.message.reply_text(f"Deleted {deleted_count} messages (if permitted).")
-    logger.info(f"Deleted {deleted_count} messages in chat {chat_id}")
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -85,8 +83,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("exit", exit_bot))
     app.add_handler(CommandHandler("id", get_id))
-    app.add_handler(CommandHandler("clear", clear_messages))
-    app.add_handler(CommandHandler("whoami", whoami))
+    app.add_handler(CommandHandler("whoami", whoareyou))
     app.add_handler(CallbackQueryHandler(button_callbacK))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, say_hello))
 

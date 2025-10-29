@@ -1,8 +1,11 @@
 import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+import os
+from dotenv import load_dotenv
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
 
-BOT_TOKEN = "8458645007:AAEZqduJx8_O0lKgZ1jd_cwK_H4KaCNkWxw"
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT-TOKEN")
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -21,6 +24,32 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def say_hello(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Message from {update.effective_user.username}: {update.message.text}")
     await update.message.reply_text("Hello there")
+
+async def whoami(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f"/whoami from {update.effective_user.username} ({update.effective_user.id})")
+    await update.message.reply_text("Hi im femboy")
+    
+async def exit_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f"/exit from {update.effective_user.username} ({update.effective_user.id})")
+    keyboard = [
+        [
+            InlineKeyboardButton("Yes", callback_data="exit_yes"),
+            InlineKeyboardButton("No", callback_data="exit_no"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("are you sure you want to exit the bot?", reply_markup=reply_markup)
+
+async def button_callbacK(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.data == "exit_yes":
+        await query.edit_message_text(text="Exiting... Goodbye!")
+        logger.info(f"Bot exited by {update.effective_user.username} ({update.effective_user.id})")
+        os._exit(0)
+    else:
+        await query.edit_message_text(text="Exit cancelled.")
+        logger.info(f"Exit cancelled by {update.effective_user.username} ({update.effective_user.id})")
 
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
@@ -54,8 +83,11 @@ def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("exit", exit_bot))
     app.add_handler(CommandHandler("id", get_id))
     app.add_handler(CommandHandler("clear", clear_messages))
+    app.add_handler(CommandHandler("whoami", whoami))
+    app.add_handler(CallbackQueryHandler(button_callbacK))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, say_hello))
 
     logger.info("Bot is running...")
